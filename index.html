@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f43f5e" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
   <title>SAAN TakeCare 💖 — Endrum Unakagaaaa!!!</title>
   <meta name="description"
     content="A personal, love-themed water hydration reminder app crafted with care for your loved one." />
@@ -20,6 +23,24 @@
   <!-- Floating Backgrounds -->
   <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden" id="petalsContainer"></div>
   <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden" id="heartsBg"></div>
+
+  <!-- PWA Install Banner -->
+  <div id="installBanner" class="hidden fixed bottom-0 left-0 right-0 z-[2000] p-3 sm:p-4"
+    style="background: linear-gradient(135deg,#fff0f6,#ffe4f0); border-top: 1.5px solid #f9a8c9; box-shadow: 0 -4px 24px #f9a8c930;">
+    <div class="max-w-lg mx-auto flex items-center gap-3">
+      <span style="font-size:2rem;">💧</span>
+      <div class="flex-1 min-w-0">
+        <p style="font-weight:700;color:#be185d;font-size:0.85rem;margin:0;">Install SAAN TakeCare</p>
+        <p style="color:#9d174d;font-size:0.72rem;margin:0;">Install the app to get notifications even when Chrome is closed! 🔔</p>
+      </div>
+      <button id="installBtn" onclick="triggerInstall()"
+        style="background:linear-gradient(135deg,#f43f5e,#e879a1);color:white;border:none;border-radius:999px;padding:0.45rem 1.1rem;font-weight:700;font-size:0.8rem;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px #f43f5e40;">
+        Install 📲
+      </button>
+      <button onclick="document.getElementById('installBanner').classList.add('hidden')"
+        style="background:none;border:none;color:#f9a8c9;font-size:1.2rem;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+  </div>
 
   <!-- App Wrapper -->
   <div class="relative z-10 min-h-screen flex items-start justify-center p-4 sm:p-6">
@@ -118,6 +139,12 @@
           <button
             class="btn btn-circle btn-sm btn-ghost hover:rotate-90 bg-rose-100/50 border-rose-200 absolute top-4 left-4 z-10"
             onclick="openSettingsModal()" title="Settings">⚙️</button>
+
+          <!-- Install chip (shown if not yet installed) -->
+          <button id="installChip"
+            onclick="triggerInstall()"
+            class="hidden absolute top-4 right-4 z-10 text-[10px] font-bold px-2 py-1 rounded-full border border-rose-300 bg-rose-50/70 text-rose-600 hover:bg-rose-100 transition-all"
+            title="Install app for background notifications">📲 Install App</button>
 
           <div class="flex flex-col items-center text-center mb-6 w-full pt-2">
             <div class="flex items-center gap-2 justify-center">

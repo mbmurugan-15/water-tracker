@@ -262,6 +262,9 @@ function logWater() {
   // Mark current scheduled slot as done
   if (state.drunk < state.schedule.length) {
     state.schedule[state.drunk].done = true;
+    const doneIdx = state.drunk;
+    delete _notifiedSlots[doneIdx];          // clear in-tab tracker
+    swPost('MARK_DONE', { slotIndex: doneIdx }); // tell SW to stop repeating
   }
 
   state.drunk++;
@@ -276,6 +279,7 @@ function logWater() {
     state.goalShown = true;
     state.goalMet = true;
     state.streak++;
+    swPost('GOAL_MET');   // tell SW to cancel all remaining reminders
     setTimeout(showGoalModal, 800);
   }
 
@@ -340,45 +344,87 @@ function spawnConfetti() {
   }
 }
 
-/* ─── Notifications ──────────────────────────────── */
-function requestNotificationPermission() {
-  if ("Notification" in window) {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        console.log("Notification permission granted.");
-      }
-    });
+/* ─── Service Worker helpers ────────────────────── */
+let _swRegistration = null;
+
+/**
+ * Send a message to the registered Service Worker.
+ * Safe to call even before registration completes.
+ */
+function swPost(type, data = {}) {
+  if (_swRegistration && _swRegistration.active) {
+    _swRegistration.active.postMessage({ type, data });
   }
 }
 
-function triggerWaterReminder(msgObj) {
-  if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("SAAN TakeCare 💧", {
-      body: msgObj || "Thanniyeaa Kudingaaa Thangooooooo !!!",
-      icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a7.png" // Using a standard drop emoji
-    });
-  }
+/* ─── Notifications ──────────────────────────────── */
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === 'granted') return;
+  await Notification.requestPermission();
 }
 
 /* ─── Scheduled Reminders ────────────────────────── */
-function startReminders() {
-  requestNotificationPermission();
+// In-tab fallback tracker {slotIndex -> lastNotifiedAt (minutes)}
+let _notifiedSlots = {};
 
-  // Check every 60 seconds if it's time to remind
-  setInterval(() => {
-    if (state.drunk >= state.goal) return;
-    const nowMins = getNow();
-    const nextSlot = state.schedule.find((s, i) => !s.done && i >= state.drunk);
-    if (!nextSlot) return;
-    const diff = Math.abs(nextSlot.mins - nowMins);
-    // Remind within ±2 minutes of scheduled time
-    if (diff <= 2) {
-      const msgs = toastMessages(state.nickname);
-      const msg = msgs[Math.floor(Math.random() * msgs.length)];
-      showToast(msg);
-      triggerWaterReminder(msg);
+async function startReminders() {
+  await requestNotificationPermission();
+
+  // ── Register Service Worker (background notifications) ──────────
+  if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+    try {
+      _swRegistration = await navigator.serviceWorker.register('./sw.js');
+
+      // Wait for the SW to be active (may take a moment on first install)
+      await new Promise(resolve => {
+        if (_swRegistration.active) { resolve(); return; }
+        const sw = _swRegistration.installing || _swRegistration.waiting;
+        if (sw) {
+          sw.addEventListener('statechange', function handler() {
+            if (sw.state === 'activated') {
+              sw.removeEventListener('statechange', handler);
+              resolve();
+            }
+          });
+        } else {
+          navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+        }
+      });
+
+      // Hand the full schedule to the SW so it can fire background notifications
+      swPost('SCHEDULE_NOTIFICATIONS', {
+        nickname: state.nickname,
+        schedule: state.schedule,
+      });
+
+      console.log('[SAAN] Service Worker registered & schedule sent.');
+    } catch (err) {
+      console.warn('[SAAN] SW registration failed:', err);
     }
-  }, 60000);
+  }
+
+  // ── In-tab fallback (also fires toasts while tab is open) ────────
+  setInterval(checkAndRemind, 30000);
+}
+
+function checkAndRemind() {
+  if (state.drunk >= state.goal) return;
+  const nowMins = getNow();
+
+  state.schedule.forEach((slot, idx) => {
+    if (slot.done || idx < state.drunk) return;
+
+    const overdue = nowMins - slot.mins;   // +ve = past due
+    if (overdue < 0) return;
+
+    const lastNotified = _notifiedSlots[idx] ?? -999;
+    if (nowMins - lastNotified >= 3) {
+      _notifiedSlots[idx] = nowMins;
+      const msgs = toastMessages(state.nickname);
+      showToast(msgs[Math.floor(Math.random() * msgs.length)]);
+    }
+  });
 }
 
 /* ─── Auto-refresh Timeline Every Minute ─────────── */
@@ -565,6 +611,45 @@ function init() {
 /* ─── Keyboard shortcut: Enter to start ─────────── */
 document.getElementById('nicknameInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') startCare();
+});
+
+/* ─── PWA Install Prompt ─────────────────────────── */
+let _installPrompt = null;
+
+// Chrome fires this when the app is installable
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();                // Don't show mini-infobar
+  _installPrompt = e;                // Save for later
+
+  // Show our custom install banner & chip
+  document.getElementById('installBanner').classList.remove('hidden');
+  const chip = document.getElementById('installChip');
+  if (chip) chip.classList.remove('hidden');
+});
+
+// Called by the Install button in banner / chip
+async function triggerInstall() {
+  if (!_installPrompt) {
+    showToast('Open this page in Chrome and use the address bar install button 📲');
+    return;
+  }
+  _installPrompt.prompt();
+  const { outcome } = await _installPrompt.userChoice;
+  if (outcome === 'accepted') {
+    showToast('App installed! Now enable Chrome background apps for offline notifications 💖');
+    document.getElementById('installBanner').classList.add('hidden');
+    const chip = document.getElementById('installChip');
+    if (chip) chip.classList.add('hidden');
+    _installPrompt = null;
+  }
+}
+
+// Hide install UI once app is already running as installed PWA
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.add('hidden');
+  const chip = document.getElementById('installChip');
+  if (chip) chip.classList.add('hidden');
+  _installPrompt = null;
 });
 
 /* ─── Boot ───────────────────────────────────────── */
