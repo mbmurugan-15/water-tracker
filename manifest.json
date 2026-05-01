@@ -1,0 +1,20 @@
+{
+  "name": "SAAN TakeCare 💧",
+  "short_name": "SAAN Water",
+  "description": "A personal love-themed water hydration reminder — Endrum Unakagaaaa!!!",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff0f6",
+  "theme_color": "#f43f5e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["health", "lifestyle"]
+}
