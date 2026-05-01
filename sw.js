@@ -63,7 +63,7 @@ function _scheduleAll(schedule, name) {
   schedule.forEach((slot, idx) => {
     if (slot.done) return;
 
-    const slotMs  = _slotToMs(slot.mins);
+    const slotMs = _slotToMs(slot.mins);
     const delayMs = slotMs - nowMs;
 
     if (delayMs > -2 * 60 * 60 * 1000) {
@@ -116,7 +116,7 @@ function _cancelAll() {
 
 /* ─── Convert slot minutes to today's timestamp ─── */
 function _slotToMs(mins) {
-  const now    = new Date();
+  const now = new Date();
   const target = new Date(now);
   target.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
   return target.getTime();
@@ -135,20 +135,20 @@ const _msgs = (name) => [
 
 /* ─── Show a browser notification ───────────────── */
 function _showNotification(slot, name, isRepeat) {
-  const msgs   = _msgs(name);
-  const body   = msgs[Math.floor(Math.random() * msgs.length)];
-  const title  = isRepeat
-    ? `⚠️ Still not drunk! Drink at ${slot.time} 💧`
-    : `💧 Time to drink water! (${slot.time})`;
+  const msgs = _msgs(name);
+  const body = msgs[Math.floor(Math.random() * msgs.length)];
+  const title = isRepeat
+    ? `🖤 Thannii yea kudingaa Thangooo..Time yea paarungaa! ${slot.time} 😘`
+    : `💗 Kannuuuu Thannii Kudikuraa Timee vandhutuuu.. (${slot.time}) 🏃🏽‍♀️‍➡️`;
 
   self.registration.showNotification(title, {
     body,
-    icon         : 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a7.png',
-    badge        : 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a7.png',
-    tag          : `water-slot-${slot.mins}`,   // same tag = replaces old reminder for same slot
+    icon: 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a7.png',
+    badge: 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a7.png',
+    tag: `water-slot-${slot.mins}`,   // same tag = replaces old reminder for same slot
     requireInteraction: true,                   // stays visible until dismissed
-    renotify     : true,                        // vibrate/sound again on repeat
-    data         : { slotIndex: slot.mins },
+    renotify: true,                        // vibrate/sound again on repeat
+    data: { slotIndex: slot.mins },
   });
 }
 
